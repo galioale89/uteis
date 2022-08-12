@@ -53,63 +53,72 @@ const projectFollow = class {
         var project = await getProject(this.idPro);
         var client = await getClientName(project.cliente);
         var accessSeller = await getValidAccessSeller(project.vendedor);
-        var seller = await getSellerInfo(project.vendedor);
+        var seller = await getPeople(project.vendedor);
 
         console.log('dataSoli=>' + this.date_soli);
 
         if (dateType == 'checkSoli') {
             if (verifyCheckDB(project.dataSoli) || naoVazio(this.date_soli)) {
-                commit(seller, project, client, 'dataSoli', this.date_soli, 'solicitada', accessSeller);
+                commitDate(seller, project, client, 'dataSoli', this.date_soli, 'solicitada', accessSeller);
             }
             else if (check != undefined) {
-                commit(seller, project, client, 'dataSoli', dataHoje(), 'solicitada', accessSeller);
+                commitDate(seller, project, client, 'dataSoli', dataHoje(), 'solicitada', accessSeller);
             }
         }
         if (dateType == 'checkApro') {
             if (verifyCheckDB(project.dataApro) || naoVazio(this.date_aproved)) {
-                commit(seller, project, client, 'dataApro', this.date_aproved, 'aprovada', accessSeller);
+                commitDate(seller, project, client, 'dataApro', this.date_aproved, 'aprovada', accessSeller);
             }
             else if (check != undefined) {
-                commit(seller, project, client, 'dataApro', dataHoje(), 'aprovada', accessSeller);
+                commitDate(seller, project, client, 'dataApro', dataHoje(), 'aprovada', accessSeller);
             }
         }
         if (dateType == 'checkTroca') {     
             if (verifyCheckDB(project.dataTroca) || naoVazio(this.date_change)) {
-                commit(seller, project, client, 'dataTroca', this.date_change, 'substituido', accessSeller);
+                commitDate(seller, project, client, 'dataTroca', this.date_change, 'substituido', accessSeller);
             }
             else if (check != undefined) {
-                commit(seller, project, client, 'dataTroca', dataHoje(), 'substituido', accessSeller);
+                commitDate(seller, project, client, 'dataTroca', dataHoje(), 'substituido', accessSeller);
             }
         }
         if (dateType == 'checkPost') {
             if (verifyCheckDB(project.dataPost) || naoVazio(this.date_project)) {
-                commit(seller, project, client, 'dataPost', this.date_project, 'postado', accessSeller);
+                commitDate(seller, project, client, 'dataPost', this.date_project, 'postado', accessSeller);
             }
             else if (check != undefined) {
-                commit(seller, project, client, 'dataPost', dataHoje(), 'postado', accessSeller);
+                commitDate(seller, project, client, 'dataPost', dataHoje(), 'postado', accessSeller);
             }
         }
         console.log('salvou datas projeto');
     };
 
-    async saveObservation(project, obs, id, person) {
-        let pessoas = await Pessoa.findById(person);
-        let nome_pessoa = pessoas.nome;
-        if (obs != '') {
+    async saveObservation() {
+        if (this.person != undefined){
+            let people = await getPeople(this.person);
+            var personName = people.nome;
+        }else{
+            var personName = '';
+        }
+        if (this.observation != '') {
             var time = String(new Date(Date.now())).substring(16, 21);
             var newdate = dataMensagem(dataHoje());
+            var project = await getProject(this.idPro);
             if (naoVazio(project.obsprojetista)) {
                 oldtext = project.obsprojetista;
             } else {
                 oldtext = '';
             }
-            var newtext = `[${newdate} - ${time}] por ${nome_pessoa}` + '\n' + obs + '\n' + oldtext;
-            await Projeto.updateOne({ _id: id }, { $set: { obsprojetista: newtext } });
+            commitObs(newdate, time, personName, this.observation, oldtext);
         }
     }
 }
 
-async function commit(seller, project, client, field, value, mescom, accessSeller) {
+async function commitObs (newDate, time, personName, obs, oldText){
+    var newtext = `[${newDate} - ${time}] por ${personName}` + '\n' + obs + '\n' + oldText;
+    await Projeto.updateOne({ _id: this.idPro }, { $set: { obsprojetista: newtext } });
+}
+
+async function commitDate(seller, project, client, field, value, mescom, accessSeller) {
     if (field == 'dataSoli'){
         await Projeto.findOneAndUpdate({ _id: project._id }, { $set: {dataSoli: value} });
     }
@@ -146,29 +155,24 @@ function verifyCheckDB(dataBase) {
 //             to: 'whatsapp:+55' + clientPhone
 //         })
 //         .then((message) => {
-//             req.flash('success_msg', 'Projeto atualizado com sucesso')
-//             res.redirect('/gerenciamento/projeto/' + idPro)
+//             console.log(message)
 //         }).done()
 // };
 
 async function getProject(idPro) {
-    var project = await Projeto.findById(idPro);
-    return project;
+    return await Projeto.findById(idPro);;
 };
 
 async function getClientName(idCliente) {
-    var client = await Cliente.findById(idCliente);
-    return client;
+    return await Cliente.findById(idCliente);
 };
 
 async function getValidAccessSeller(idVendedor) {
-    var access = await Acesso.findOne({ pessoa: idVendedor, notvis: 'checked' });
-    return access;
+    return await Acesso.findOne({ pessoa: idVendedor, notvis: 'checked' });
 };
 
-async function getSellerInfo(idVendedor) {
-    var vendedor = await Pessoa.findById(idVendedor);
-    return vendedor;
+async function getPeople(idPerson) {
+   return await Pessoa.findById(idPerson);
 };
 
 module.exports = projectFollow;
